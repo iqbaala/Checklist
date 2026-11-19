@@ -1,0 +1,1251 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Daily Checklist — YouTube & Shopee</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #21262d;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --text2:   #8b949e;
+      --yt:      #ff4444;
+      --yt-bg:   rgba(255,68,68,.12);
+      --sp:      #f97316;
+      --sp-bg:   rgba(249,115,22,.12);
+      --green:   #3fb950;
+      --green-bg:rgba(63,185,80,.12);
+      --radius:  14px;
+      --shadow:  0 8px 32px rgba(0,0,0,.5);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── TOP BAR ─── */
+    .topbar {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 0 32px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 14px; }
+    .topbar-logo { font-size: 22px; }
+    .topbar-title { font-size: 16px; font-weight: 700; color: var(--text); }
+    .topbar-date { font-size: 13px; color: var(--text2); background: var(--bg3); padding: 5px 12px; border-radius: 20px; }
+    .topbar-nav { display: flex; gap: 4px; }
+    .nav-btn {
+      padding: 7px 16px; border-radius: 8px; border: none;
+      background: transparent; color: var(--text2);
+      font-size: 13px; font-weight: 500; cursor: pointer;
+      transition: all .15s;
+    }
+    .nav-btn:hover { background: var(--bg3); color: var(--text); }
+    .nav-btn.active { background: var(--bg3); color: var(--text); }
+    .clock-badge {
+      font-size: 14px; font-weight: 700; color: var(--text2);
+      letter-spacing: 1px; min-width: 72px; text-align: right;
+    }
+
+    /* ─── LAYOUT ─── */
+    .content { max-width: 1100px; margin: 0 auto; padding: 28px 24px; }
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ─── PROGRESS HEADER ─── */
+    .progress-header {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .prog-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .prog-icon { font-size: 32px; }
+    .prog-info {}
+    .prog-label { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .7px; margin-bottom: 4px; }
+    .prog-val { font-size: 24px; font-weight: 700; }
+    .prog-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+    .prog-bar {
+      height: 4px; background: var(--bg3);
+      border-radius: 100px; overflow: hidden;
+      margin-top: 10px;
+    }
+    .prog-fill {
+      height: 100%; border-radius: 100px;
+      transition: width .4s ease;
+    }
+
+    /* ─── SECTION HEADER ─── */
+    .section-wrap { margin-bottom: 32px; }
+    .section-head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-title-row { display: flex; align-items: center; gap: 10px; }
+    .section-icon { font-size: 20px; }
+    .section-title { font-size: 16px; font-weight: 700; }
+    .section-badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    }
+    .yt-badge { background: var(--yt-bg); color: var(--yt); }
+    .sp-badge { background: var(--sp-bg); color: var(--sp); }
+    .section-actions { display: flex; gap: 8px; }
+    .btn-sm {
+      padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: transparent; color: var(--text2);
+      font-size: 12px; font-weight: 500; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-sm:hover { background: var(--bg3); color: var(--text); border-color: var(--text2); }
+    .btn-sm.danger { border-color: transparent; color: var(--yt); }
+    .btn-sm.danger:hover { background: var(--yt-bg); border-color: var(--yt); }
+
+    /* ─── GRID ─── */
+    .items-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+      gap: 12px;
+    }
+
+    /* ─── ITEM CARD ─── */
+    .item-card {
+      background: var(--bg2);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: all .18s;
+      user-select: none;
+      position: relative;
+      overflow: hidden;
+    }
+    .item-card::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: var(--radius) var(--radius) 0 0;
+      background: transparent;
+      transition: background .18s;
+    }
+    .item-card:hover { border-color: var(--text2); transform: translateY(-1px); }
+    .item-card.done {
+      border-color: var(--green) !important;
+      background: var(--green-bg);
+    }
+    .item-card.done::before { background: var(--green); }
+    .item-card.yt::before { background: var(--yt); }
+    .item-card.sp::before { background: var(--sp); }
+    .item-card.yt:hover { border-color: var(--yt); }
+    .item-card.sp:hover { border-color: var(--sp); }
+
+    .item-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .item-platform { font-size: 22px; }
+    .check-circle {
+      width: 26px; height: 26px; border-radius: 50%;
+      border: 2px solid var(--border);
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px;
+      transition: all .18s;
+      background: transparent;
+    }
+    .item-card.done .check-circle {
+      background: var(--green);
+      border-color: var(--green);
+      color: #fff;
+    }
+    .item-name {
+      font-size: 14px; font-weight: 600;
+      margin-top: 10px; margin-bottom: 4px;
+      line-height: 1.4;
+    }
+    .item-sub {
+      font-size: 11px; color: var(--text2);
+    }
+    .item-card.done .item-sub { color: var(--green); }
+    .item-done-time { font-size: 11px; color: var(--green); margin-top: 6px; font-style: italic; }
+
+    .item-edit-btn {
+      position: absolute; bottom: 10px; right: 12px;
+      font-size: 14px; opacity: 0; cursor: pointer;
+      background: none; border: none; color: var(--text2);
+      transition: opacity .15s;
+    }
+    .item-card:hover .item-edit-btn { opacity: 1; }
+
+    /* ─── ADD BUTTON ─── */
+    .add-card {
+      background: transparent;
+      border: 1.5px dashed var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      cursor: pointer;
+      transition: all .18s;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      color: var(--text2); font-size: 13px; font-weight: 500;
+    }
+    .add-card:hover { border-color: var(--text2); color: var(--text); background: var(--bg3); }
+
+    /* ─── MODAL ─── */
+    .modal-overlay {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.7);
+      z-index: 999;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%; max-width: 400px;
+      box-shadow: var(--shadow);
+    }
+    .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 20px; }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; }
+    .form-group input, .form-group select {
+      width: 100%;
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 12px;
+      color: var(--text); font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .form-group input:focus, .form-group select:focus { border-color: #58a6ff; }
+    .form-group select option { background: var(--bg3); }
+    .modal-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .btn { padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+    .btn-cancel { background: var(--bg3); color: var(--text2); }
+    .btn-cancel:hover { color: var(--text); }
+    .btn-primary { background: #238636; color: #fff; }
+    .btn-primary:hover { background: #2ea043; }
+    .btn-del { background: transparent; border: 1px solid var(--yt); color: var(--yt); }
+    .btn-del:hover { background: var(--yt-bg); }
+
+    /* ─── HISTORY ─── */
+    .date-picker-row { display: flex; gap: 10px; align-items: center; margin-bottom: 24px; flex-wrap: wrap; }
+    .date-picker-row input[type=date] {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 8px 12px;
+      color: var(--text); font-size: 13px; outline: none;
+    }
+    .history-item {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden; margin-bottom: 20px;
+    }
+    .history-day-head {
+      padding: 14px 20px;
+      background: var(--bg3);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .history-day-label { font-size: 14px; font-weight: 700; }
+    .history-day-badges { display: flex; gap: 8px; }
+    .h-badge {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    }
+    .history-day-body { padding: 16px 20px; }
+    .history-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .history-row:last-child { border-bottom: none; }
+    .h-icon { font-size: 18px; }
+    .h-name { flex: 1; font-size: 13px; }
+    .h-status {
+      font-size: 11px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
+    }
+    .h-done { background: var(--green-bg); color: var(--green); }
+    .h-miss { background: rgba(255,68,68,.12); color: var(--yt); }
+    .h-time { font-size: 11px; color: var(--text2); }
+
+    /* ─── STATS ─── */
+    .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 24px; }
+    .stat-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px;
+    }
+    .stat-card h3 { font-size: 13px; color: var(--text2); font-weight: 600; margin-bottom: 20px; }
+    .chart-wrap { position: relative; height: 240px; }
+
+    /* rate table */
+    .rate-table { width: 100%; border-collapse: collapse; }
+    .rate-table th { font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .6px; padding: 8px 0; text-align: left; border-bottom: 1px solid var(--border); }
+    .rate-table td { padding: 10px 0; font-size: 13px; border-bottom: 1px solid var(--border); }
+    .rate-table tr:last-child td { border-bottom: none; }
+    .mini-bar-wrap { width: 100px; height: 6px; background: var(--bg3); border-radius: 100px; overflow: hidden; }
+    .mini-bar { height: 100%; border-radius: 100px; }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 18px;
+      max-width: 280px; z-index: 9999;
+      box-shadow: var(--shadow);
+      transform: translateY(80px); opacity: 0;
+      transition: all .3s ease;
+      pointer-events: none;
+    }
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-title { font-size: 13px; font-weight: 700; margin-bottom: 3px; }
+    .toast-body { font-size: 12px; color: var(--text2); }
+
+    /* ─── SETTINGS ─── */
+    .settings-block { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 20px; }
+    .settings-block-head { padding: 14px 20px; background: var(--bg3); font-size: 13px; font-weight: 700; color: var(--text2); }
+    .settings-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px; border-bottom: 1px solid var(--border); }
+    .settings-row:last-child { border-bottom: none; }
+    .settings-row label { font-size: 14px; }
+    .settings-row span { font-size: 12px; color: var(--text2); display: block; margin-top: 2px; }
+    .toggle { position: relative; width: 44px; height: 24px; display: inline-block; flex-shrink: 0; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg3); border-radius: 100px; transition: .3s; }
+    .toggle-slider:before { content: ''; position: absolute; width: 18px; height: 18px; border-radius: 50%; left: 3px; bottom: 3px; background: var(--text2); transition: .3s; }
+    .toggle input:checked + .toggle-slider { background: #238636; }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); background: #fff; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width: 700px) {
+      .topbar { padding: 0 16px; }
+      .content { padding: 16px; }
+      .progress-header { grid-template-columns: 1fr 1fr; }
+      .stats-grid { grid-template-columns: 1fr; }
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 10px; }
+  </style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <div class="toast-title" id="toast-title"></div>
+  <div class="toast-body" id="toast-body"></div>
+</div>
+
+<!-- MODAL: Add/Edit Item -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <h3 id="modalTitle">Tambah Channel / Toko</h3>
+    <div class="form-group">
+      <label>Nama</label>
+      <input type="text" id="m-name" placeholder="Nama channel atau toko..." />
+    </div>
+    <div class="form-group">
+      <label>Tipe</label>
+      <select id="m-type">
+        <option value="youtube">▶️ YouTube Channel</option>
+        <option value="shopee">🛍️ Toko Shopee</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>URL / Link (opsional)</label>
+      <input type="url" id="m-url" placeholder="https://..." />
+    </div>
+    <div class="modal-btns" id="modalBtns">
+      <button class="btn btn-cancel" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" onclick="saveItem()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOP BAR -->
+<header class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">📋</div>
+    <div class="topbar-title">Daily Checklist</div>
+    <div class="topbar-date" id="topbarDate">—</div>
+  </div>
+  <nav class="topbar-nav">
+    <button class="nav-btn active" data-page="dashboard" onclick="goPage('dashboard',this)">🏠 Hari Ini</button>
+    <button class="nav-btn" data-page="history" onclick="goPage('history',this)">📅 Riwayat</button>
+    <button class="nav-btn" data-page="stats" onclick="goPage('stats',this)">📊 Statistik</button>
+    <button class="nav-btn" data-page="settings" onclick="goPage('settings',this)">⚙️ Pengaturan</button>
+    <button class="nav-btn" style="background:#25D366;color:#fff;border-radius:8px" onclick="sendWASummary()">📲 Kirim WA</button>
+  </nav>
+  <div class="clock-badge" id="clock">19:56:00</div>
+</header>
+
+<div class="content">
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <div class="page active" id="page-dashboard">
+
+    <!-- Progress cards -->
+    <div class="progress-header">
+      <div class="prog-card">
+        <div class="prog-icon">▶️</div>
+        <div class="prog-info" style="flex:1">
+          <div class="prog-label">YouTube</div>
+          <div class="prog-val"><span id="d-yt-done">0</span><span style="color:var(--text2);font-size:16px"> / <span id="d-yt-total">0</span></span></div>
+          <div class="prog-sub">channel selesai</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-yt-bar" style="width:0%;background:var(--yt)"></div></div>
+        </div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-icon">🛍️</div>
+        <div class="prog-info" style="flex:1">
+          <div class="prog-label">Shopee</div>
+          <div class="prog-val"><span id="d-sp-done">0</span><span style="color:var(--text2);font-size:16px"> / <span id="d-sp-total">0</span></span></div>
+          <div class="prog-sub">toko selesai</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-sp-bar" style="width:0%;background:var(--sp)"></div></div>
+        </div>
+      </div>
+      <div class="prog-card">
+        <div class="prog-icon">✅</div>
+        <div class="prog-info" style="flex:1">
+          <div class="prog-label">Total Progress</div>
+          <div class="prog-val"><span id="d-all-done">0</span><span style="color:var(--text2);font-size:16px"> / <span id="d-all-total">0</span></span></div>
+          <div class="prog-sub" id="d-pct-label">0% selesai</div>
+          <div class="prog-bar"><div class="prog-fill" id="d-all-bar" style="width:0%;background:var(--green)"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- YouTube Section -->
+    <div class="section-wrap">
+      <div class="section-head">
+        <div class="section-title-row">
+          <div class="section-icon">▶️</div>
+          <div class="section-title">YouTube Channels</div>
+          <span class="section-badge yt-badge" id="yt-badge">0 / 0</span>
+        </div>
+        <div class="section-actions">
+          <button class="btn-sm" onclick="checkAllType('youtube')">Ceklis Semua</button>
+          <button class="btn-sm danger" onclick="uncheckAllType('youtube')">Reset</button>
+        </div>
+      </div>
+      <div class="items-grid" id="yt-grid"></div>
+    </div>
+
+    <!-- Shopee Section -->
+    <div class="section-wrap">
+      <div class="section-head">
+        <div class="section-title-row">
+          <div class="section-icon">🛍️</div>
+          <div class="section-title">Toko Shopee</div>
+          <span class="section-badge sp-badge" id="sp-badge">0 / 0</span>
+        </div>
+        <div class="section-actions">
+          <button class="btn-sm" onclick="checkAllType('shopee')">Ceklis Semua</button>
+          <button class="btn-sm danger" onclick="uncheckAllType('shopee')">Reset</button>
+        </div>
+      </div>
+      <div class="items-grid" id="sp-grid"></div>
+    </div>
+
+  </div>
+
+  <!-- ══════════ HISTORY ══════════ -->
+  <div class="page" id="page-history">
+    <div class="date-picker-row">
+      <span style="font-size:14px;font-weight:600">📅 Riwayat</span>
+      <input type="date" id="hist-from" />
+      <span style="color:var(--text2);font-size:13px">s/d</span>
+      <input type="date" id="hist-to" />
+      <button class="btn-sm" onclick="renderHistory()">Tampilkan</button>
+    </div>
+    <div id="historyContent"></div>
+  </div>
+
+  <!-- ══════════ STATS ══════════ -->
+  <div class="page" id="page-stats">
+    <div style="font-size:18px;font-weight:700;margin-bottom:20px">📊 Statistik Produktivitas</div>
+    <div class="stats-grid">
+      <div class="stat-card">
+        <h3>📈 Completion Rate per Channel (30 hari)</h3>
+        <div style="overflow-x:auto">
+          <table class="rate-table" id="rateTable">
+            <thead><tr><th>Nama</th><th>Selesai</th><th>Rate</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="stat-card">
+        <h3>📊 Aktivitas 7 Hari Terakhir</h3>
+        <div class="chart-wrap"><canvas id="chartLine"></canvas></div>
+      </div>
+      <div class="stat-card">
+        <h3>🍩 YouTube vs Shopee (30 hari)</h3>
+        <div class="chart-wrap"><canvas id="chartDoughnut"></canvas></div>
+      </div>
+      <div class="stat-card">
+        <h3>🔥 Hari Tersibuk (per weekday)</h3>
+        <div class="chart-wrap"><canvas id="chartWeekday"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════ SETTINGS ══════════ -->
+  <div class="page" id="page-settings">
+    <div style="font-size:18px;font-weight:700;margin-bottom:20px">⚙️ Pengaturan</div>
+
+    <div class="settings-block">
+      <div class="settings-block-head">🔔 Pengingat Harian</div>
+      <div class="settings-row">
+        <div>
+          <label>Notifikasi Browser</label>
+          <span>Izinkan browser kirim pengingat</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="tog-notif" onchange="requestNotif()" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Pengingat Pagi</label>
+          <span>Ingatkan mulai kerja hari ini</span>
+        </div>
+        <input type="time" id="inp-morning" value="08:00"
+          style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;outline:none"
+          onchange="saveSett('morningTime',this.value)" />
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Pengingat Malam</label>
+          <span>Ingatkan kalau masih ada yang belum selesai</span>
+        </div>
+        <input type="time" id="inp-evening" value="20:00"
+          style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;outline:none"
+          onchange="saveSett('eveningTime',this.value)" />
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Auto Reset Harian</label>
+          <span>Checklist otomatis reset setiap tengah malam</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="tog-reset" checked onchange="saveSett('autoReset',this.checked)" />
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-head">🤖 Bot WhatsApp Nomor Kedua (Pengirim di Server Railway)</div>
+
+      <!-- Live status card -->
+      <div id="wa-bot-card" style="margin:16px 20px;padding:16px;border-radius:12px;background:var(--bg3);border:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span id="wa-bot-badge" style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#8b949e"></span>
+            <span id="wa-bot-status-text" style="font-weight:700;font-size:14px">Memeriksa koneksi server...</span>
+          </div>
+          <button id="btn-wa-logout" class="btn btn-del" style="display:none;font-size:11px;padding:4px 10px" onclick="logoutWhatsApp()">Putus / Ganti Nomor</button>
+        </div>
+
+        <!-- QR Code Container -->
+        <div id="wa-qr-container" style="display:none;text-align:center;padding:16px 0">
+          <p style="font-size:13px;color:var(--text2);margin-bottom:12px">
+            Buka WhatsApp di <strong>Nomor Kedua</strong> > <strong>Perangkat Tertaut</strong> > <strong>Tautkan Perangkat</strong>, lalu scan QR Code di bawah:
+          </p>
+          <div style="background:#fff;padding:12px;display:inline-block;border-radius:12px;box-shadow:0 4px 20px rgba(0,0,0,0.5)">
+            <img id="wa-qr-img" style="width:200px;height:200px;display:block" alt="WhatsApp QR Code" />
+          </div>
+          <p style="font-size:11px;color:var(--text2);margin-top:8px">QR Code otomatis diperbarui setiap 20 detik jika belum di-scan.</p>
+        </div>
+
+        <div id="wa-connected-info" style="display:none;font-size:13px;color:var(--green)">
+          ✅ Nomor kedua kamu sudah aktif 24 jam di cloud server Railway! Pesan pengingat jam 6 pagi & malam akan otomatis dikirim dari nomor ini ke nomor utama kamu.
+        </div>
+      </div>
+
+      <!-- Target Phone (Penerima) -->
+      <div class="settings-row">
+        <div>
+          <label>Nomor WhatsApp Utama (Penerima Pengingat)</label>
+          <span>Nomor utama kamu yang akan menerima pesan dari nomor kedua (cth: 081234567890)</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="tel" id="inp-target-phone" placeholder="081234567890"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;outline:none;width:180px;text-align:right"
+            onchange="saveServerSettings()" />
+          <button class="btn btn-primary" style="font-size:12px;padding:7px 14px;white-space:nowrap" onclick="triggerSendNow()">🚀 Kirim Tes</button>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <label>Pengingat Pagi Otomatis (WIB)</label>
+          <span>Dikirim langsung oleh server walau laptop & HP mati total</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <input type="time" id="inp-morning-time" value="06:00"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;outline:none"
+            onchange="saveServerSettings()" />
+          <label class="toggle">
+            <input type="checkbox" id="tog-morning-active" checked onchange="saveServerSettings()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="settings-row">
+        <div>
+          <label>Pengingat Malam Otomatis (WIB)</label>
+          <span>Laporan ceklis sore/malam mana saja yang belum selesai</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:center">
+          <input type="time" id="inp-evening-time" value="20:00"
+            style="background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:13px;outline:none"
+            onchange="saveServerSettings()" />
+          <label class="toggle">
+            <input type="checkbox" id="tog-evening-active" checked onchange="saveServerSettings()" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-block">
+      <div class="settings-block-head">🗂️ Data & Backup</div>
+      <div class="settings-row">
+        <div>
+          <label>Export Data JSON</label>
+          <span>Simpan semua riwayat ke file</span>
+        </div>
+        <button class="btn btn-primary" style="font-size:12px;padding:7px 16px" onclick="exportData()">Export</button>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label>Import Data JSON</label>
+          <span>Pulihkan dari file backup</span>
+        </div>
+        <label style="cursor:pointer">
+          <input type="file" accept=".json" style="display:none" id="importFile" onchange="importData(event)" />
+          <span class="btn-sm" onclick="document.getElementById('importFile').click()" style="cursor:pointer">Import</span>
+        </label>
+      </div>
+      <div class="settings-row">
+        <div>
+          <label style="color:#f85149">Hapus Semua Data</label>
+          <span>Reset total (channel & riwayat)</span>
+        </div>
+        <button class="btn btn-del" style="font-size:12px;padding:7px 16px" onclick="nukeAll()">Reset</button>
+      </div>
+    </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /content -->
+
+<script>
+// ════════════════════════════════
+//  STATE
+// ════════════════════════════════
+let items    = JSON.parse(localStorage.getItem('cl_items')    || '[]');
+let log      = JSON.parse(localStorage.getItem('cl_log')      || '{}');
+let sett     = JSON.parse(localStorage.getItem('cl_sett')     || '{}');
+let charts   = {};
+let editId   = null;
+
+// defaults
+sett = { morningTime:'08:00', eveningTime:'20:00', autoReset:true, notif:false, ...sett };
+
+// ════════════════════════════════
+//  HELPERS
+// ════════════════════════════════
+const today  = () => new Date().toISOString().slice(0,10);
+const uid    = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+const save   = () => {
+  localStorage.setItem('cl_items', JSON.stringify(items));
+  localStorage.setItem('cl_log', JSON.stringify(log));
+  if (typeof syncToServer === 'function') syncToServer();
+};
+const saveSett = (k,v) => { sett[k]=v; localStorage.setItem('cl_sett', JSON.stringify(sett)); };
+
+function fmtDate(d){
+  if(!d) return '';
+  const dt = new Date(d+'T12:00:00');
+  const dn = ['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const mn = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  return `${dn[dt.getDay()]}, ${dt.getDate()} ${mn[dt.getMonth()]} ${dt.getFullYear()}`;
+}
+
+function addDays(d, n){
+  const dt = new Date(d+'T12:00:00');
+  dt.setDate(dt.getDate()+n);
+  return dt.toISOString().slice(0,10);
+}
+
+// ════════════════════════════════
+//  CLOCK & DATE
+// ════════════════════════════════
+function updateClock(){
+  const d = new Date();
+  document.getElementById('clock').textContent = d.toLocaleTimeString('id-ID');
+  const mn = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  document.getElementById('topbarDate').textContent =
+    `${d.getDate()} ${mn[d.getMonth()]} ${d.getFullYear()}`;
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ════════════════════════════════
+//  NAVIGATION
+// ════════════════════════════════
+function goPage(p, btn){
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(x => x.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(p==='dashboard') renderDashboard();
+  if(p==='history')   renderHistory();
+  if(p==='stats')     renderStats();
+  if(p==='settings')  loadSettings();
+}
+
+// ════════════════════════════════
+//  SEED DEFAULT DATA
+// ════════════════════════════════
+if(!items.length){
+  for(let i=1;i<=8;i++) items.push({ id:uid(), type:'youtube', name:'Channel YouTube '+i, url:'' });
+  for(let i=1;i<=4;i++) items.push({ id:uid(), type:'shopee', name:'Toko Shopee '+i, url:'' });
+  save();
+}
+
+// ════════════════════════════════
+//  CHECK LOGIC
+// ════════════════════════════════
+function getLog(date){
+  if(!log[date]) log[date] = {};
+  return log[date];
+}
+
+function isDone(id, date){
+  return !!(getLog(date||today())[id]);
+}
+
+function toggle(id){
+  const d = today();
+  const L = getLog(d);
+  if(L[id]){
+    delete L[id];
+  } else {
+    L[id] = new Date().toTimeString().slice(0,5); // "HH:MM"
+  }
+  save();
+  renderDashboard();
+}
+
+function checkAllType(type){
+  const d = today(); const L = getLog(d);
+  items.filter(x=>x.type===type).forEach(x=>{ if(!L[x.id]) L[x.id]=new Date().toTimeString().slice(0,5); });
+  save(); renderDashboard();
+}
+function uncheckAllType(type){
+  const d = today(); const L = getLog(d);
+  items.filter(x=>x.type===type).forEach(x=>{ delete L[x.id]; });
+  save(); renderDashboard();
+}
+
+// ════════════════════════════════
+//  RENDER DASHBOARD
+// ════════════════════════════════
+function renderDashboard(){
+  const d  = today();
+  const yt = items.filter(x=>x.type==='youtube');
+  const sp = items.filter(x=>x.type==='shopee');
+  const ytD= yt.filter(x=>isDone(x.id,d)).length;
+  const spD= sp.filter(x=>isDone(x.id,d)).length;
+  const all= items.length;
+  const allD=ytD+spD;
+  const pct = all ? Math.round(allD/all*100) : 0;
+
+  // stats
+  document.getElementById('d-yt-done').textContent=ytD;
+  document.getElementById('d-yt-total').textContent=yt.length;
+  document.getElementById('d-sp-done').textContent=spD;
+  document.getElementById('d-sp-total').textContent=sp.length;
+  document.getElementById('d-all-done').textContent=allD;
+  document.getElementById('d-all-total').textContent=all;
+  document.getElementById('d-pct-label').textContent=pct+'% selesai';
+  document.getElementById('d-yt-bar').style.width=(yt.length?ytD/yt.length*100:0)+'%';
+  document.getElementById('d-sp-bar').style.width=(sp.length?spD/sp.length*100:0)+'%';
+  document.getElementById('d-all-bar').style.width=pct+'%';
+  document.getElementById('yt-badge').textContent=ytD+' / '+yt.length;
+  document.getElementById('sp-badge').textContent=spD+' / '+sp.length;
+
+  renderGrid('yt-grid', yt, d);
+  renderGrid('sp-grid', sp, d);
+}
+
+function renderGrid(elId, list, date){
+  const el = document.getElementById(elId);
+  const isYT = list[0]?.type==='youtube';
+
+  let html = list.map(item => {
+    const done = isDone(item.id, date);
+    const doneTime = getLog(date)[item.id];
+    const icon = item.type==='youtube' ? '▶️' : '🛍️';
+    const cls  = item.type==='youtube' ? 'yt' : 'sp';
+    return `
+    <div class="item-card ${cls} ${done?'done':''}" onclick="toggle('${item.id}')">
+      <div class="item-top">
+        <div class="item-platform">${icon}</div>
+        <div class="check-circle">${done?'✓':''}</div>
+      </div>
+      <div class="item-name">${item.name}</div>
+      <div class="item-sub">${done ? 'Sudah diedit ✅' : 'Belum diedit'}</div>
+      ${done && doneTime ? `<div class="item-done-time">⏱ Selesai pukul ${doneTime}</div>` : ''}
+      <button class="item-edit-btn" onclick="openEditModal(event,'${item.id}')">✏️</button>
+    </div>`;
+  }).join('');
+
+  // Add button
+  const addType = isYT ? 'youtube' : 'shopee';
+  html += `<div class="add-card" onclick="openAddModal('${addType}')">
+    <span style="font-size:18px">＋</span> Tambah ${isYT?'Channel':'Toko'}
+  </div>`;
+
+  el.innerHTML = html;
+}
+
+// ════════════════════════════════
+//  MODAL
+// ════════════════════════════════
+function openAddModal(type){
+  editId = null;
+  document.getElementById('modalTitle').textContent = type==='youtube'?'Tambah Channel YouTube':'Tambah Toko Shopee';
+  document.getElementById('m-name').value = '';
+  document.getElementById('m-type').value = type;
+  document.getElementById('m-url').value  = '';
+  document.getElementById('modalBtns').innerHTML = `
+    <button class="btn btn-cancel" onclick="closeModal()">Batal</button>
+    <button class="btn btn-primary" onclick="saveItem()">Simpan</button>`;
+  document.getElementById('modalOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('m-name').focus(),100);
+}
+
+function openEditModal(e, id){
+  e.stopPropagation();
+  editId = id;
+  const item = items.find(x=>x.id===id);
+  if(!item) return;
+  document.getElementById('modalTitle').textContent = 'Edit Item';
+  document.getElementById('m-name').value = item.name;
+  document.getElementById('m-type').value = item.type;
+  document.getElementById('m-url').value  = item.url||'';
+  document.getElementById('modalBtns').innerHTML = `
+    <button class="btn btn-del" onclick="deleteItem('${id}')">Hapus</button>
+    <button class="btn btn-cancel" onclick="closeModal()">Batal</button>
+    <button class="btn btn-primary" onclick="saveItem()">Simpan</button>`;
+  document.getElementById('modalOverlay').classList.add('show');
+  setTimeout(()=>document.getElementById('m-name').focus(),100);
+}
+
+function closeModal(){ document.getElementById('modalOverlay').classList.remove('show'); editId=null; }
+function closeModalOutside(e){ if(e.target===document.getElementById('modalOverlay')) closeModal(); }
+
+function saveItem(){
+  const name = document.getElementById('m-name').value.trim();
+  const type = document.getElementById('m-type').value;
+  const url  = document.getElementById('m-url').value.trim();
+  if(!name){ document.getElementById('m-name').style.borderColor='var(--yt)'; return; }
+  if(editId){
+    const item=items.find(x=>x.id===editId);
+    if(item){ item.name=name; item.type=type; item.url=url; }
+    toast('✅ Tersimpan','Item berhasil diperbarui.');
+  } else {
+    items.push({ id:uid(), type, name, url });
+    toast('✅ Ditambahkan',`"${name}" berhasil ditambahkan.`);
+  }
+  save(); closeModal(); renderDashboard();
+}
+
+function deleteItem(id){
+  if(!confirm('Hapus item ini dari daftar?')) return;
+  items=items.filter(x=>x.id!==id);
+  save(); closeModal(); renderDashboard();
+  toast('🗑️ Dihapus','Item telah dihapus.');
+}
+
+// ════════════════════════════════
+//  HISTORY
+// ════════════════════════════════
+function renderHistory(){
+  // default range: last 7 days
+  const toDate   = today();
+  const fromDate = addDays(toDate, -6);
+  if(!document.getElementById('hist-from').value){
+    document.getElementById('hist-from').value = fromDate;
+    document.getElementById('hist-to').value   = toDate;
+  }
+  const from = document.getElementById('hist-from').value || fromDate;
+  const to   = document.getElementById('hist-to').value   || toDate;
+
+  // collect dates in range
+  const dates = [];
+  let cur = from;
+  while(cur <= to){ dates.push(cur); cur = addDays(cur,1); }
+  dates.reverse();
+
+  if(!dates.length){ document.getElementById('historyContent').innerHTML='<p style="color:var(--text2)">Tidak ada data.</p>'; return; }
+
+  let html='';
+  dates.forEach(date => {
+    const L = log[date] || {};
+    if(date > today()) return; // skip future
+    const done  = items.filter(x=>L[x.id]);
+    const miss  = items.filter(x=>!L[x.id]);
+    const pct   = items.length ? Math.round(done.length/items.length*100) : 0;
+    const isToday = date===today();
+
+    html += `<div class="history-item">
+      <div class="history-day-head">
+        <div class="history-day-label">${isToday?'🟢 Hari Ini':''} ${fmtDate(date)}</div>
+        <div class="history-day-badges">
+          <span class="h-badge" style="background:var(--green-bg);color:var(--green)">✅ ${done.length}/${items.length}</span>
+          ${miss.length && !isToday ? `<span class="h-badge" style="background:rgba(255,68,68,.12);color:var(--yt)">⚠️ ${miss.length} belum</span>` : ''}
+          <span class="h-badge" style="background:var(--bg3);color:var(--text2)">${pct}%</span>
+        </div>
+      </div>
+      <div class="history-day-body">
+        ${items.map(item=>{
+          const doneTime = L[item.id];
+          const icon = item.type==='youtube'?'▶️':'🛍️';
+          return `<div class="history-row">
+            <div class="h-icon">${icon}</div>
+            <div class="h-name">${item.name}</div>
+            ${doneTime
+              ? `<span class="h-time">${doneTime}</span><span class="h-status h-done">Selesai ✅</span>`
+              : `<span class="h-status h-miss">${isToday?'Belum':'Terlupakan ⚠️'}</span>`}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('historyContent').innerHTML = html || '<p style="color:var(--text2);text-align:center;padding:40px">Tidak ada riwayat di rentang ini.</p>';
+}
+
+// ════════════════════════════════
+//  STATISTICS
+// ════════════════════════════════
+function destroyChart(id){ if(charts[id]){ charts[id].destroy(); delete charts[id]; } }
+
+function renderStats(){
+  const days30 = [];
+  for(let i=29;i>=0;i--) days30.push(addDays(today(),-i));
+
+  // Rate table per item
+  const tbody = document.querySelector('#rateTable tbody');
+  tbody.innerHTML = items.map(item=>{
+    const doneCount = days30.filter(d=> log[d] && log[d][item.id]).length;
+    const rate = Math.round(doneCount/30*100);
+    const icon = item.type==='youtube'?'▶️':'🛍️';
+    const color = item.type==='youtube'?'var(--yt)':'var(--sp)';
+    return `<tr>
+      <td>${icon} ${item.name}</td>
+      <td>${doneCount}/<span style="color:var(--text2)">30</span></td>
+      <td style="font-weight:600;color:${color}">${rate}%</td>
+      <td><div class="mini-bar-wrap"><div class="mini-bar" style="width:${rate}%;background:${color}"></div></div></td>
+    </tr>`;
+  }).join('');
+
+  // Line chart: 7 days
+  const days7 = [];
+  for(let i=6;i>=0;i--) days7.push(addDays(today(),-i));
+  const mn = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const lineLabels = days7.map(d=>{ const dt=new Date(d+'T12:00:00'); return `${dt.getDate()} ${mn[dt.getMonth()]}`; });
+  const ytData = days7.map(d=>items.filter(x=>x.type==='youtube'&&log[d]&&log[d][x.id]).length);
+  const spData = days7.map(d=>items.filter(x=>x.type==='shopee'&&log[d]&&log[d][x.id]).length);
+
+  destroyChart('chartLine');
+  charts['chartLine']=new Chart(document.getElementById('chartLine'),{
+    type:'line',
+    data:{ labels:lineLabels, datasets:[
+      {label:'YouTube',data:ytData,borderColor:'#ff4444',backgroundColor:'rgba(255,68,68,.1)',fill:true,tension:.4,pointRadius:5},
+      {label:'Shopee',data:spData,borderColor:'#f97316',backgroundColor:'rgba(249,115,22,.1)',fill:true,tension:.4,pointRadius:5}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8b949e',boxWidth:12}}},
+      scales:{x:{ticks:{color:'#8b949e'},grid:{color:'#21262d'}},
+              y:{ticks:{color:'#8b949e',stepSize:1},grid:{color:'#21262d'},min:0}}}
+  });
+
+  // Doughnut: YT vs SP (30 days total ticks)
+  const ytTotal30 = days30.reduce((acc,d)=>acc+items.filter(x=>x.type==='youtube'&&log[d]&&log[d][x.id]).length,0);
+  const spTotal30 = days30.reduce((acc,d)=>acc+items.filter(x=>x.type==='shopee'&&log[d]&&log[d][x.id]).length,0);
+  destroyChart('chartDoughnut');
+  charts['chartDoughnut']=new Chart(document.getElementById('chartDoughnut'),{
+    type:'doughnut',
+    data:{labels:['YouTube ✅','Shopee ✅'],datasets:[{data:[ytTotal30,spTotal30],backgroundColor:['#ff4444','#f97316'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{labels:{color:'#8b949e',boxWidth:12}}}}
+  });
+
+  // Weekday bar
+  const wdLabels=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+  const wdCount=[0,0,0,0,0,0,0];
+  days30.forEach(d=>{
+    const L=log[d]||{}; const doneC=items.filter(x=>L[x.id]).length;
+    if(doneC) wdCount[new Date(d+'T12:00:00').getDay()]+=doneC;
+  });
+  destroyChart('chartWeekday');
+  charts['chartWeekday']=new Chart(document.getElementById('chartWeekday'),{
+    type:'bar',
+    data:{labels:wdLabels,datasets:[{label:'Total Selesai',data:wdCount,backgroundColor:'rgba(63,185,80,.6)',borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8b949e',boxWidth:12}}},
+      scales:{x:{ticks:{color:'#8b949e'},grid:{color:'#21262d'}},
+              y:{ticks:{color:'#8b949e',stepSize:1},grid:{color:'#21262d'},min:0}}}
+  });
+}
+
+// ════════════════════════════════
+//  WHATSAPP BOT & RAILWAY INTEGRATION
+// ════════════════════════════════
+let botPollTimer = null;
+
+async function checkBotStatus() {
+  try {
+    const res = await fetch('/api/status');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const badge = document.getElementById('wa-bot-badge');
+    const statusText = document.getElementById('wa-bot-status-text');
+    const qrContainer = document.getElementById('wa-qr-container');
+    const qrImg = document.getElementById('wa-qr-img');
+    const connectedInfo = document.getElementById('wa-connected-info');
+    const btnLogout = document.getElementById('btn-wa-logout');
+
+    if (!badge || !statusText) return;
+
+    if (data.status === 'connected') {
+      badge.style.background = '#238636';
+      statusText.textContent = `🟢 Nomor Kedua Terhubung (+${data.connectedNumber || 'Aktif'})`;
+      qrContainer.style.display = 'none';
+      connectedInfo.style.display = 'block';
+      btnLogout.style.display = 'inline-block';
+    } else if (data.status === 'scan_needed') {
+      badge.style.background = '#f59e0b';
+      statusText.textContent = '🟡 Nomor Kedua Belum Tertaut (Scan QR di bawah)';
+      if (data.qr) {
+        qrImg.src = data.qr;
+        qrContainer.style.display = 'block';
+      }
+      connectedInfo.style.display = 'none';
+      btnLogout.style.display = 'none';
+    } else {
+      badge.style.background = '#8b949e';
+      statusText.textContent = '⚪ Sedang menghubungkan ke server bot...';
+      qrContainer.style.display = 'none';
+      connectedInfo.style.display = 'none';
+      btnLogout.style.display = 'none';
+    }
+  } catch (err) {
+    // If running pure static file without server
+    const statusText = document.getElementById('wa-bot-status-text');
+    if (statusText) statusText.textContent = '⚠️ Menjalankan mode offline / lokal';
+  }
+}
+
+async function triggerSendNow() {
+  const target = document.getElementById('inp-target-phone')?.value.trim() || sett.targetPhone;
+  if (!target) {
+    toast('⚠️ Nomor Kosong', 'Masukkan nomor WhatsApp utama kamu terlebih dahulu di Pengaturan!');
+    goPage('settings', document.querySelector('[data-page="settings"]'));
+    return;
+  }
+
+  toast('⏳ Mengirim...', 'Meminta nomor kedua mengirim ringkasan...');
+  try {
+    const res = await fetch('/api/send-now', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ targetPhone: target })
+    });
+    const result = await res.json();
+    if (result.success) {
+      toast('📲 Terkirim!', 'Nomor kedua berhasil mengirim chat ke nomor utama kamu!');
+    } else {
+      toast('⚠️ Gagal', result.error || 'Gagal mengirim pesan.');
+    }
+  } catch (err) {
+    toast('⚠️ Error Server', 'Pastikan server bot di Railway sedang aktif.');
+  }
+}
+
+function sendWASummary() {
+  triggerSendNow();
+}
+
+async function logoutWhatsApp() {
+  if (!confirm('Putus sambungan nomor kedua ini? Kamu harus scan ulang untuk menghubungkan kembali.')) return;
+  try {
+    await fetch('/api/logout', { method: 'POST' });
+    toast('🚪 Disconnect', 'Nomor kedua berhasil diputus. Silakan scan ulang.');
+    setTimeout(checkBotStatus, 1500);
+  } catch (err) {
+    toast('❌ Error', 'Gagal memutus sambungan.');
+  }
+}
+
+async function saveServerSettings() {
+  sett.targetPhone = document.getElementById('inp-target-phone')?.value.trim() || '';
+  sett.morningTime = document.getElementById('inp-morning-time')?.value || '06:00';
+  sett.eveningTime = document.getElementById('inp-evening-time')?.value || '20:00';
+  sett.morningEnabled = document.getElementById('tog-morning-active')?.checked ?? true;
+  sett.eveningEnabled = document.getElementById('tog-evening-active')?.checked ?? true;
+  save();
+  await syncToServer();
+  toast('✅ Tersimpan', 'Pengaturan server berhasil diperbarui.');
+}
+
+async function syncToServer() {
+  try {
+    await fetch('/api/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ items, log, settings: sett })
+    });
+  } catch (e) {}
+}
+
+async function loadFromServer() {
+  try {
+    const res = await fetch('/api/data');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (data.items && data.items.length) items = data.items;
+    if (data.log) log = data.log;
+    if (data.settings) sett = { ...sett, ...data.settings };
+    save();
+    renderDashboard();
+    loadSettings();
+  } catch (e) {}
+}
+
+function loadSettings(){
+  document.getElementById('tog-notif').checked  = Notification.permission==='granted';
+  document.getElementById('tog-reset').checked  = sett.autoReset!==false;
+
+  // Server settings
+  if (document.getElementById('inp-target-phone')) {
+    document.getElementById('inp-target-phone').value = sett.targetPhone || '';
+  }
+  if (document.getElementById('inp-morning-time')) {
+    document.getElementById('inp-morning-time').value = sett.morningTime || '06:00';
+  }
+  if (document.getElementById('inp-evening-time')) {
+    document.getElementById('inp-evening-time').value = sett.eveningTime || '20:00';
+  }
+  if (document.getElementById('tog-morning-active')) {
+    document.getElementById('tog-morning-active').checked = sett.morningEnabled !== false;
+  }
+  if (document.getElementById('tog-evening-active')) {
+    document.getElementById('tog-evening-active').checked = sett.eveningEnabled !== false;
+  }
+
+  checkBotStatus();
+}
+
+function requestNotif(){
+  if(Notification.permission==='granted'){
+    toast('ℹ️ Info','Cabut izin dari pengaturan browser ya.');
+    document.getElementById('tog-notif').checked=true;
+  } else {
+    Notification.requestPermission().then(p=>{
+      document.getElementById('tog-notif').checked=p==='granted';
+      if(p==='granted') toast('🔔 Aktif!','Kamu akan dapat pengingat dari browser.');
+    });
+  }
+}
+
+// ════════════════════════════════
+//  EXPORT / IMPORT
+// ════════════════════════════════
+function exportData(){
+  const blob=new Blob([JSON.stringify({items,log,sett,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='checklist-backup-'+today()+'.json';
+  a.click();
+  toast('💾 Export','File berhasil diunduh.');
+}
+function importData(e){
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=async ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(data.items) items=data.items;
+      if(data.log)   log=data.log;
+      if(data.sett)  sett=data.sett;
+      save();
+      await syncToServer();
+      toast('✅ Import','Data berhasil dipulihkan!');
+      renderDashboard();
+    } catch(err){ toast('❌ Error','File tidak valid.'); }
+  };
+  r.readAsText(file);
+}
+function nukeAll(){
+  if(!confirm('Hapus SEMUA data? Ini tidak bisa dibatalkan!')) return;
+  items=[]; log={};
+  save(); syncToServer(); toast('🔄 Reset','Semua data dihapus.'); renderDashboard();
+}
+
+// ════════════════════════════════
+//  TOAST
+// ════════════════════════════════
+let toastTimer=null;
+function toast(title,body){
+  document.getElementById('toast-title').textContent=title;
+  document.getElementById('toast-body').textContent=body;
+  const el=document.getElementById('toast');
+  el.classList.add('show');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>el.classList.remove('show'),3500);
+}
+
+// ════════════════════════════════
+//  AUTO RESET at midnight
+// ════════════════════════════════
+let lastDay=today();
+setInterval(()=>{
+  if(sett.autoReset && today()!==lastDay){
+    lastDay=today();
+    toast('🌅 Hari Baru','Checklist otomatis direset!');
+    renderDashboard();
+  }
+}, 60000);
+
+// Poll bot status regularly
+setInterval(checkBotStatus, 4000);
+
+// ════════════════════════════════
+//  INIT
+// ════════════════════════════════
+renderDashboard();
+loadFromServer();
+checkBotStatus();
+
+</script>
+</body>
+</html>
